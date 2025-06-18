@@ -1,40 +1,37 @@
 <?php
-// Timezone just for logging consistency
 date_default_timezone_set('Asia/Kolkata');
 
-// Target protected .m3u8 URL
-$url = "https://play.denver1769.fun/Play/hls/T1Mssa/Playlist.m3u";
+// Get target m3u URL (can be fixed or passed via ?url=)
+$url = $_GET['url'] ?? 'https://play.denver1769.fun/Play/hls/T1Mssa/Playlist.m3u';
 
-// You can pass URL dynamically too
-// $url = $_GET['url'] ?? 'https://...';
+// Spoof User-Agent (can be customized via ?ua=)
+$ua = $_GET['ua'] ?? 'VLC/3.0.11 LibVLC/3.0.11';
 
-// Use a non-browser User-Agent (to avoid redirection)
-$ua = $_GET['ua'] ?? "VLC/3.0.11 LibVLC/3.0.11";
-
-// Custom headers
+// Set headers to bypass browser detection
 $headers = [
     "User-Agent: $ua",
     "Accept: */*",
-    "Connection: keep-alive"
+    "Connection: keep-alive",
 ];
 
-// Create context for GET request
+// Create HTTP context
 $context = stream_context_create([
-    "http" => [
-        "method" => "GET",
-        "header" => implode("\r\n", $headers),
-        "ignore_errors" => true
+    'http' => [
+        'method' => 'GET',
+        'header' => implode("\r\n", $headers),
+        'ignore_errors' => true
     ]
 ]);
 
-// Attempt to fetch M3U8 content
+// Try fetching the playlist
 $response = @file_get_contents($url, false, $context);
 
-// Serve the result
-if ($response !== false) {
+// Check and respond
+if ($response !== false && str_starts_with($response, '#EXTM3U')) {
     header("Content-Type: application/vnd.apple.mpegurl");
     echo $response;
 } else {
     http_response_code(403);
-    echo "# Error: Playlist not accessible. Try a different User-Agent or check IP restriction.\n";
+    echo "# ❌ Failed to fetch or invalid playlist.\n";
+    echo "# 🔁 Try a different UA: ?ua=Lavf/58.45.100\n";
 }
