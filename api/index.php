@@ -1,37 +1,35 @@
 <?php
 date_default_timezone_set('Asia/Kolkata');
 
-// Get target m3u URL (can be fixed or passed via ?url=)
+// Step 1: Get URL
 $url = $_GET['url'] ?? 'https://play.denver1769.fun/Play/hls/T1Mssa/Playlist.m3u';
 
-// Spoof User-Agent (can be customized via ?ua=)
-$ua = $_GET['ua'] ?? 'VLC/3.0.11 LibVLC/3.0.11';
-
-// Set headers to bypass browser detection
-$headers = [
-    "User-Agent: $ua",
-    "Accept: */*",
-    "Connection: keep-alive",
+// Step 2: Get or randomize User-Agent
+$uas = [
+    "VLC/3.0.11 LibVLC/3.0.11",
+    "Lavf/58.45.100",
+    "AppleCoreMedia/1.0.0.18E212 (iPhone; U; CPU OS 13_3_1 like Mac OS X; en_us)"
 ];
+$ua = $_GET['ua'] ?? $uas[array_rand($uas)];
 
-// Create HTTP context
-$context = stream_context_create([
-    'http' => [
-        'method' => 'GET',
-        'header' => implode("\r\n", $headers),
-        'ignore_errors' => true
+// Step 3: Setup request
+$opts = [
+    "http" => [
+        "method" => "GET",
+        "header" => "User-Agent: $ua\r\nAccept: */*\r\n",
+        "ignore_errors" => true
     ]
-]);
-
-// Try fetching the playlist
+];
+$context = stream_context_create($opts);
 $response = @file_get_contents($url, false, $context);
 
-// Check and respond
-if ($response !== false && str_starts_with($response, '#EXTM3U')) {
+// Step 4: Send as M3U8
+if ($response && str_starts_with($response, '#EXTM3U')) {
     header("Content-Type: application/vnd.apple.mpegurl");
     echo $response;
 } else {
     http_response_code(403);
-    echo "# ❌ Failed to fetch or invalid playlist.\n";
-    echo "# 🔁 Try a different UA: ?ua=Lavf/58.45.100\n";
+    header("Content-Type: text/plain");
+    echo "# Failed to fetch valid stream.\n";
+    echo "# Try with ?ua=AppleCoreMedia...\n";
 }
